@@ -9,7 +9,6 @@ from pyEasyPoch.exceptions import (
     )
 
 
-
 class EasyPoch(BaseModel):
     arg:str = Field(
         default = "now",
@@ -33,7 +32,15 @@ class EasyPoch(BaseModel):
 
 
     def model_post_init(self, _data):
-        parsed_functions = condition_parser(self.arg)
+        parsed_argument = condition_parser(self.arg)
+        # Logic:
+        # with parsed arguments first need to determine what to set the time now
+        # check to see if time is defined, if it isn't then just set it to now
+        # if recursive keep time as the time defined
+        # if not recursive and offset is set then apply the offset to the time
+        # if recursive is set then make it iterable
+        # use the offset for the recursion else error
+        # Set the until time
         self.time = time.time()
 
     @property

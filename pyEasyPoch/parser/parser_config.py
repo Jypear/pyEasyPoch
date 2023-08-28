@@ -2,10 +2,8 @@ from pydantic import BaseModel
 
 
 class ParserConfig(BaseModel):
-    time_arg: str = "now"
-    offset_arg: str = ""
+    time: str = "now"
+    offset: str = ""
 
-    recursive_arg: str = ""
-    end_arg: str = ""
-
-    
+    recursive: str = ""
+    until: str = ""

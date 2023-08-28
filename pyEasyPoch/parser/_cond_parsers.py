@@ -7,20 +7,36 @@ from ._parser_types import (
 )
 
 def condition_parser(arg: str):
-    # Then need to determine if the string starts with "every" if it does it needs to be recursive
-    # Then need to determine if until is used if it is the recursion has a set ending time
-    _time_arg = _parse_timestamp(arg)
-    _offset_arg = _parse_offset(arg)
 
-    
+    return {
+        "time": _parse_timestamp(arg),
+        "offset": _parse_offset(arg),
+        "recursive": _parse_recursion(arg),
+        "until": _parse_end(arg)
+    }
+
 def _find_matching_time_expressions(arg: str):
     all_time_items = re.findall(r"(\d{1,11})\s?(seconds|second|minutes|minute|hours|hour|days|day)", arg)
     return all_time_items
 
+def _split_until_statement(arg: str, split:str = "pre"):
+    split_options = ["pre", "post"]
+    if split not in split_options:
+        raise pyEasyPochParsingException(
+            "When splitting until statement, undefined split option was passed into function."
+        )
+    r = re.search(r"(.*)until(.*)", arg, re.IGNORECASE)
+    data = arg
+    if r:
+        if split == "pre":
+            data = r.group(1).strip()
+        elif split == "post":
+            data = r.group(2).strip()
+    return data
 
 def _parse_timestamp(arg: str):
-
     _time_arg = {}
+    arg = _split_until_statement(arg)
     r = re.search(r"(now)|(epoch) (\d{1,64})|(time) ([\d,\-,\:,\/,\ ]{1,64})", arg, re.IGNORECASE)
     if r:
         if r.group(1):
@@ -38,13 +54,10 @@ def _parse_timestamp(arg: str):
                 "arg": r.group(5),
                 "style": StyleEnum.TIMESTAMP
             }
-
-    
     return _time_arg
 
 
 def _parse_offset(arg: str):
-    
     _time_arg = {}
     r = re.search(r"(((\d{1,11})\s?(seconds|second|minutes|minute|hours|hour|days|day)\s?)*)(after|before)", arg, re.IGNORECASE)
     if r:
@@ -87,7 +100,17 @@ def _parse_offset(arg: str):
     return _time_arg
 
 def _parse_recursion(arg: str):
-    pass
+    _time_arg = False
+    r = re.search(r"^(every)\s?\d", arg, re.IGNORECASE)
+    if r:
+        if "every" in r.group(1).lower():
+            _time_arg = True
+    return _time_arg
 
 def _parse_end(arg: str):
-    pass
+    _time_arg = {}
+    r = re.search(r"until", arg, re.IGNORECASE)
+    if r:
+        post_statement = _split_until_statement(arg, split="post")
+        _time_arg = _parse_timestamp(post_statement)
+    return _time_arg
