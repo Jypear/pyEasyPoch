@@ -3,3 +3,6 @@ class PyEasyPochException(Exception):
 
 class pyEasyPochFormatException(Exception):
     ...
+
+class pyEasyPochParsingException(Exception):
+    ...

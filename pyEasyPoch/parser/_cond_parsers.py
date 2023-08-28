@@ -1,28 +1,27 @@
 import re
-from enum import Enum
-from pyEasyPoch.parser.parser_config import ParserConfig
-
-class StyleEnum(Enum):
-    EPOCH = "epoch"
-    TIMESTAMP = "timestamp"
-    STRING = "string"
-
+from pyEasyPoch.exceptions import pyEasyPochParsingException
+from ._parser_types import (
+    StyleEnum,
+    OffsetEnum,
+    TimeExpressionsEnum
+)
 
 def condition_parser(arg: str):
-    # Determine in string the time that needs to be set
-        # This is going to either be 'now' or an actual date/time or epoch
-        # examples now, from now, before now, 1234567, 12:34 11/12/2023
-    # After that need to determine if an argument of time is used before 'before' or 'after'
-        # 5 minutes before, 10 seconds after
     # Then need to determine if the string starts with "every" if it does it needs to be recursive
     # Then need to determine if until is used if it is the recursion has a set ending time
     _time_arg = _parse_timestamp(arg)
+    _offset_arg = _parse_offset(arg)
+
+    
+def _find_matching_time_expressions(arg: str):
+    all_time_items = re.findall(r"(\d{1,11})\s?(seconds|second|minutes|minute|hours|hour|days|day)", arg)
+    return all_time_items
 
 
 def _parse_timestamp(arg: str):
 
     _time_arg = {}
-    r = re.search(r"(now)|(epoch) (\d{1,64})|(time) ([\d,\-,\:,\/,\ ]{1,64})", arg)
+    r = re.search(r"(now)|(epoch) (\d{1,64})|(time) ([\d,\-,\:,\/,\ ]{1,64})", arg, re.IGNORECASE)
     if r:
         if r.group(1):
             _time_arg = {
@@ -45,7 +44,47 @@ def _parse_timestamp(arg: str):
 
 
 def _parse_offset(arg: str):
-    pass
+    
+    _time_arg = {}
+    r = re.search(r"(((\d{1,11})\s?(seconds|second|minutes|minute|hours|hour|days|day)\s?)*)(after|before)", arg, re.IGNORECASE)
+    if r:
+        offset = {
+            "seconds": 0,
+            "minutes": 0,
+            "hours": 0,
+            "days": 0
+        }
+        time_expression_map = {
+            TimeExpressionsEnum.DAY: "days",
+            TimeExpressionsEnum.DAYS: "days",
+            TimeExpressionsEnum.HOUR: "hours",
+            TimeExpressionsEnum.HOURS: "hous",
+            TimeExpressionsEnum.MINUTE: "minutes",
+            TimeExpressionsEnum.MINUTES: "minutes",
+            TimeExpressionsEnum.SECOND: "seconds",
+            TimeExpressionsEnum.SECONDS: "seconds"
+        }
+        try:
+            _time_arg["style"] = OffsetEnum(r.group(5).lower())
+        except Exception as err:
+            raise pyEasyPochParsingException("Error capturing after or before offset argument") from err
+        matched_expressions = _find_matching_time_expressions(r.group(1).lower())
+        if len(matched_expressions) == 0:
+            raise pyEasyPochParsingException(
+                "Detected offset but unable to find matching time expressions"
+            )
+        else:
+            for result in matched_expressions:
+                try:
+                    time_expression = TimeExpressionsEnum(TimeExpressionsEnum(result[1]))
+                except Exception as err:
+                    raise pyEasyPochParsingException("Error capturing time expression argument when determining offset") from err
+                if time_expression in time_expression_map.keys():
+                    offset[time_expression_map[time_expression]] = int(result[0])
+        _time_arg["offset"] = offset
+
+
+    return _time_arg
 
 def _parse_recursion(arg: str):
     pass
